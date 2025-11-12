@@ -1,10 +1,14 @@
+from django.utils import timezone
+from django.db.models import Count , Q , Max , Min
 from rest_framework import viewsets, status
 from rest_framework.response import Response
+from rest_framework.decorators import action
+
+
 from .models import Author, Book, Member, Loan
 from .serializers import AuthorSerializer, BookSerializer, MemberSerializer, LoanSerializer
-from rest_framework.decorators import action
-from django.utils import timezone
 from .tasks import send_loan_notification
+from .paginations import LargeResultsSetPagination
 
 class AuthorViewSet(viewsets.ModelViewSet):
     queryset = Author.objects.all()
@@ -49,6 +53,35 @@ class MemberViewSet(viewsets.ModelViewSet):
     queryset = Member.objects.all()
     serializer_class = MemberSerializer
 
+
+    @action(detail=False , methods=['get'])
+    def activity_reports(self, request):
+        """ return activity on the memenber about his loans  """
+        today = timezone.now().date()
+        response_data = []
+
+        members = Member.objects.select_related('user').annotate(
+            total_loans=Count('loans'),
+            active_loans=Count('loans',filter=Q(loans__is_returned=False)),
+            overdue_loans=Count('loans', 
+                                filter=Q(loans__is_returned=False) and Q(loans__return_date__lt=today))
+        ).order_by('-total_loans')
+
+
+        for member in members:
+            response_data.append({
+                'user' : member.user.username,
+                'email': member.user.email if member.user.email else None,
+                'total_loans': member.total_loans,
+                'active_loans': member.active_loans,
+                'overdue_loans': member.overdue_loans
+            })
+
+        return Response(response_data)
+        
+
+
 class LoanViewSet(viewsets.ModelViewSet):
     queryset = Loan.objects.all()
     serializer_class = LoanSerializer
+    pagination_class= LargeResultsSetPagination
