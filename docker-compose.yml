@@ -30,6 +30,8 @@ services:
       - db
       - redis
 
+    restart: on-failure
+
   celery:
     build: .
     command: celery -A library_system worker -l info

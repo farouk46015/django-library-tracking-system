@@ -56,7 +56,7 @@ def send_overdue_loan_notification(loan_id):
 
 
 
-@shared_task
+@shared_task(name='check_overdue_loans')
 def check_overdue_laons() -> str:
     """ Task for checking the over due loans run daily base """
     today = timezone.now().date()
@@ -64,7 +64,7 @@ def check_overdue_laons() -> str:
     overdue_laons_ids = list(
         Loan.objects.filter(
             is_returned=False,
-            return_date_lt=today
+            return_date__lt=today
         ).values_list('id' ,flat=True)
     )
 
