@@ -1,4 +1,4 @@
-version: '3.8'
+
 
 services:
   db:
@@ -40,6 +40,19 @@ services:
     depends_on:
       - web
       - redis
+
+  flower: 
+    build: .
+    command: celery -A library_system flower -l info
+    volumes:
+      - .:/code
+    env_file:
+      - .env
+    ports:
+      - "5555:5555"
+    depends_on:
+      - web
+      - celery
 
 volumes:
   postgres_data:
